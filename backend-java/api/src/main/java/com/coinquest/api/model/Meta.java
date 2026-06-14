@@ -22,7 +22,7 @@ public class Meta {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @NotBlank(message = "O título da meta é obrigatório.")
     private String titulo;
