@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'cadastro_view.dart';
 
-
-class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+class CadastroView extends StatefulWidget {
+  const CadastroView({super.key});
 
   @override
-  State<LoginView> createState() => _LoginViewState();
+  State<CadastroView> createState() => _CadastroViewState();
 }
 
-class _LoginViewState extends State<LoginView> {
-  // Controladores para capturar o que o usuário digita
+class _CadastroViewState extends State<CadastroView> {
+  // Controladores para capturar os dados digitados
+  final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
   
@@ -19,64 +18,93 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   void dispose() {
+    _nomeController.dispose();
     _emailController.dispose();
     _senhaController.dispose();
     super.dispose();
   }
 
-  void _fazerLogin() {
-    // Valida se os campos foram preenchidos corretamente antes de tentar logar
+  void _efetuarCadastro() {
+    // Valida as regras visuais antes de tentar cadastrar
     if (_formKey.currentState!.validate()) {
+      String nome = _nomeController.text;
       String email = _emailController.text;
       String senha = _senhaController.text;
 
       // Mensagem temporária na tela simulando o envio
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tentando logar com: $email')),
+        SnackBar(content: Text('Cadastrando $nome...')),
       );
-      
-      // LOGICA DA API: amanhã vamos conectar esses dados com o nosso backend Java!
+
+      // INTEGRACAO: Aqui faremos o Flutter disparar o JSON para a nossa API Java!
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xff121212), // Fundo escuro elegante
+      backgroundColor: const Color(0xff121212), // Fundo escuro do seu design
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context), // Botão para voltar à tela de login
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // LOGO / ÍCONE DO APP
-                const Icon(
-                  Icons.monetization_on_outlined,
-                  size: 80,
-                  color: Colors.greenAccent,
-                ),
-                const SizedBox(height: 16),
-                
-                // TÍTULO
+                // TÍTULO DA TELA
                 const Text(
-                  'CoinQuest',
+                  'Criar Conta',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Seu gerenciador de metas financeiras',
+                  'Preencha os campos para começar a poupar',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
+
+                // CAMPO DE NOME
+                TextFormField(
+                  controller: _nomeController,
+                  keyboardType: TextInputType.name,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Nome Completo',
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.person_outline, color: Colors.grey),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.greenAccent),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor, insira seu nome';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
 
                 // CAMPO DE E-MAIL
                 TextFormField(
@@ -111,7 +139,7 @@ class _LoginViewState extends State<LoginView> {
                 // CAMPO DE SENHA
                 TextFormField(
                   controller: _senhaController,
-                  obscureText: true, // Esconde as letras com bolinhas
+                  obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Senha',
@@ -128,7 +156,7 @@ class _LoginViewState extends State<LoginView> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Por favor, insira sua senha';
+                      return 'Por favor, insira uma senha';
                     }
                     if (value.length < 6) {
                       return 'A senha deve ter no mínimo 6 caracteres';
@@ -137,9 +165,10 @@ class _LoginViewState extends State<LoginView> {
                   },
                 ),
                 const SizedBox(height: 32),
-                 // BOTÃO DE ENTRAR
+
+                // BOTÃO DE CADASTRAR
                 ElevatedButton(
-                  onPressed: _fazerLogin,
+                  onPressed: _efetuarCadastro,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.greenAccent,
                     foregroundColor: Colors.black,
@@ -149,23 +178,8 @@ class _LoginViewState extends State<LoginView> {
                     ),
                   ),
                   child: const Text(
-                    'Entrar',
+                    'Cadastrar',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Botão de texto para navegar até a tela de cadastro
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const CadastroView()),
-                    );
-                  },
-                  child: const Text(
-                    'Não tem uma conta? Cadastre-se',
-                    style: TextStyle(color: Colors.greenAccent),
                   ),
                 ),
               ],
@@ -176,4 +190,3 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 }
-
