@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class CadastroView extends StatefulWidget {
   const CadastroView({super.key});
@@ -8,13 +10,13 @@ class CadastroView extends StatefulWidget {
 }
 
 class _CadastroViewState extends State<CadastroView> {
-  // Controladores para capturar os dados digitados
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
-  
-  // Chave para validação do formulário
   final _formKey = GlobalKey<FormState>();
+  
+  // Variável para mostrar uma barra de carregamento no botão
+  bool _carregando = false;
 
   @override
   void dispose() {
@@ -24,32 +26,71 @@ class _CadastroViewState extends State<CadastroView> {
     super.dispose();
   }
 
-  void _efetuarCadastro() {
-    // Valida as regras visuais antes de tentar cadastrar
-    if (_formKey.currentState!.validate()) {
-      String nome = _nomeController.text;
-      String email = _emailController.text;
-      String senha = _senhaController.text;
+  // FUNÇÃO QUE CONECTA COM A API JAVA
+  Future<void> _efetuarCadastro() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      // Mensagem temporária na tela simulando o envio
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cadastrando $nome...')),
+    setState(() {
+      _carregando = true;
+    });
+
+    final url = Uri.parse('http://localhost:8080/usuarios/cadastrar');
+
+    try {
+      // Dispara a requisição POST com o JSON exatamente como o Java espera
+      final resposta = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nome': _nomeController.text,
+          'email': _emailController.text,
+          'senha': _senhaController.text,
+        }),
       );
 
-      // INTEGRACAO: Aqui faremos o Flutter disparar o JSON para a nossa API Java!
+      // Se o Java responder 201 (Created)
+      if (resposta.statusCode == 201) {
+        _mostrarMensagem('Cadastro realizado com sucesso!', Colors.greenAccent);
+        
+        // Retorna para a tela de login após 2 segundos
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) Navigator.pop(context);
+      } else {
+        // Se o e-mail já existir, o Java joga o erro 400
+        final mensagemErro = resposta.body;
+        _mostrarMensagem(mensagemErro, Colors.redAccent);
+      }
+    } catch (e) {
+      // Caso a API Java esteja desligada
+      _mostrarMensagem('Erro ao conectar com o servidor. Verifique se o backend está ligado.', Colors.redAccent);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _carregando = false;
+        });
+      }
     }
+  }
+
+  void _mostrarMensagem(String texto, Color cor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texto, style: const TextStyle(color: Colors.black)),
+        backgroundColor: cor,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xff121212), // Fundo escuro do seu design
+      backgroundColor: const Color(0xff121212),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context), // Botão para voltar à tela de login
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Center(
@@ -61,7 +102,6 @@ class _CadastroViewState extends State<CadastroView> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // TÍTULO DA TELA
                 const Text(
                   'Criar Conta',
                   textAlign: TextAlign.center,
@@ -79,7 +119,7 @@ class _CadastroViewState extends State<CadastroView> {
                 ),
                 const SizedBox(height: 40),
 
-                // CAMPO DE NOME
+                // Campo Nome
                 TextFormField(
                   controller: _nomeController,
                   keyboardType: TextInputType.name,
@@ -106,7 +146,7 @@ class _CadastroViewState extends State<CadastroView> {
                 ),
                 const SizedBox(height: 20),
 
-                // CAMPO DE E-MAIL
+                // Campo E-mail
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -136,7 +176,7 @@ class _CadastroViewState extends State<CadastroView> {
                 ),
                 const SizedBox(height: 20),
 
-                // CAMPO DE SENHA
+                // Campo Senha
                 TextFormField(
                   controller: _senhaController,
                   obscureText: true,
@@ -166,9 +206,9 @@ class _CadastroViewState extends State<CadastroView> {
                 ),
                 const SizedBox(height: 32),
 
-                // BOTÃO DE CADASTRAR
+                // Botão Cadastrar Inteligente (Mostra carregamento ao clicar)
                 ElevatedButton(
-                  onPressed: _efetuarCadastro,
+                  onPressed: _carregando ? null : _efetuarCadastro,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.greenAccent,
                     foregroundColor: Colors.black,
@@ -177,10 +217,16 @@ class _CadastroViewState extends State<CadastroView> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Cadastrar',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: _carregando
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Cadastrar',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ],
             ),

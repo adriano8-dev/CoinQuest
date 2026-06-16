@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'cadastro_view.dart';
-
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -10,12 +11,12 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  // Controladores para capturar o que o usuário digita
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
-  
-  // Chave para validação do formulário
   final _formKey = GlobalKey<FormState>();
+  
+  // Variável para mostrar animação de carregamento no botão
+  bool _carregando = false;
 
   @override
   void dispose() {
@@ -24,25 +25,66 @@ class _LoginViewState extends State<LoginView> {
     super.dispose();
   }
 
-  void _fazerLogin() {
-    // Valida se os campos foram preenchidos corretamente antes de tentar logar
-    if (_formKey.currentState!.validate()) {
-      String email = _emailController.text;
-      String senha = _senhaController.text;
+  // FUNÇÃO QUE CONECTA COM A ROTA DE LOGIN DA API JAVA
+  Future<void> _fazerLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      // Mensagem temporária na tela simulando o envio
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tentando logar com: $email')),
+    setState(() {
+      _carregando = true;
+    });
+
+    final url = Uri.parse('http://localhost:8080/usuarios/login');
+
+    try {
+      // Dispara a requisição POST com as credenciais para o Spring Boot
+      final resposta = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'senha': _senhaController.text,
+        }),
       );
-      
-      // LOGICA DA API: amanhã vamos conectar esses dados com o nosso backend Java!
+
+      // Se o java responder 200 OK (Login bem-sucedido)
+      if (resposta.statusCode == 200) {
+        // O java nos devolve o objeto do Usuário completo em formato de texto JSON
+        final dadosUsuario = jsonDecode(resposta.body);
+        String nomeUsuario = dadosUsuario['nome'];
+
+        _mostrarMensagem('Bem-vindo de volta, $nomeUsuario! 🎉', Colors.greenAccent);
+
+        // INTEGRACAO: No futuro, vamos navegar para a Dashboard passando os dadosUsuario['id']
+      } else {
+        // Se o e-mail não existir ou a senha estiver incorreta (Erro 401 ou 404)
+        final mensagemErro = resposta.body;
+        _mostrarMensagem(mensagemErro, Colors.redAccent);
+      }
+    } catch (e) {
+      // Trata o erro caso a API java esteja desligada
+      _mostrarMensagem('Erro ao conectar com o servidor. O backend está ligado?', Colors.redAccent);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _carregando = false;
+        });
+      }
     }
+  }
+
+  void _mostrarMensagem(String texto, Color cor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texto, style: const TextStyle(color: Colors.black)),
+        backgroundColor: cor,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xff121212), // Fundo escuro elegante
+      backgroundColor: const Color(0xff121212),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -52,15 +94,12 @@ class _LoginViewState extends State<LoginView> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // LOGO / ÍCONE DO APP
                 const Icon(
                   Icons.monetization_on_outlined,
                   size: 80,
                   color: Colors.greenAccent,
                 ),
                 const SizedBox(height: 16),
-                
-                // TÍTULO
                 const Text(
                   'CoinQuest',
                   textAlign: TextAlign.center,
@@ -78,7 +117,7 @@ class _LoginViewState extends State<LoginView> {
                 ),
                 const SizedBox(height: 40),
 
-                // CAMPO DE E-MAIL
+                // Campo E-mail
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -108,10 +147,10 @@ class _LoginViewState extends State<LoginView> {
                 ),
                 const SizedBox(height: 20),
 
-                // CAMPO DE SENHA
+                // Campo Senha
                 TextFormField(
                   controller: _senhaController,
-                  obscureText: true, // Esconde as letras com bolinhas
+                  obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Senha',
@@ -137,9 +176,10 @@ class _LoginViewState extends State<LoginView> {
                   },
                 ),
                 const SizedBox(height: 32),
-                 // BOTÃO DE ENTRAR
+
+                // Botão de Entrar Inteligente
                 ElevatedButton(
-                  onPressed: _fazerLogin,
+                  onPressed: _carregando ? null : _fazerLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.greenAccent,
                     foregroundColor: Colors.black,
@@ -148,14 +188,19 @@ class _LoginViewState extends State<LoginView> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Entrar',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: _carregando
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Entrar',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                 ),
                 const SizedBox(height: 24),
                 
-                // Botão de texto para navegar até a tela de cadastro
                 TextButton(
                   onPressed: () {
                     Navigator.push(
@@ -176,4 +221,3 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 }
-
